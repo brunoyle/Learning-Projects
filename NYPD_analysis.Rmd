@@ -1,0 +1,191 @@
+---
+title: "NYPD_analysis"
+author: "Bruno Lecona"
+date: "4/25/2022"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r load_tidiverse, include = FALSE}
+#Install and load necessary packages
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(hms)
+```
+
+NYPD Shooting Incident Data (Historic) list every shooting incident that occurred in NYC, going back to 2006 through March 2022.
+
+This data is reviewed by the Office of Management Analysis and Planning, before being posted on the NYPD website and each record includes information of the event, location and time of occurrence as well as information related to the suspect and victim.
+
+Being said that, my main questions are. Where have occurred the most cases in NYC? Have they been increasing along the time?
+
+Let's start by loading the data from the database mentioned above
+``` {r import_data, message = FALSE}
+NYPD_shooting_data <- read_csv("https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD")
+
+```
+
+And reading it to know more about the variables of the data set and look what are we going to use and what we don't need for this analysis
+
+``` {r read_data, include = TRUE}
+
+str(NYPD_shooting_data)
+```
+
+*Tidy and transform data.
+
+Location_desc has a lot of missing data but we will not be using it so we will be ignoring that variable for now. If we have had to use it we would be transforming those empty rows to a MISSING description.
+
+As we saw, half of our data is char, we are going to transform them to factor. The Occur_date and Occur_time keys need to be transformed to data and hour formats respectively so we can use them properly, the statistical_murder_flag could work better with a logical format. Finally we got rid of the X_COORD_CD,Y_COORD_CD, Lot_Lat keys because we have the Longitude and Latitude keys on their own and are the ones we will be using.
+
+``` {r tidy_transform_data, include = FALSE}
+
+NYPD_sh_t <- NYPD_shooting_data %>% mutate(OCCUR_DATE = mdy(OCCUR_DATE), OCCUR_TIME = as_hms(OCCUR_TIME), BORO = as.factor(BORO), PRECINCT=as.factor(PRECINCT), JURISDICTION_CODE = as.factor(JURISDICTION_CODE), LOCATION_DESC = as.factor(LOCATION_DESC),STATISTICAL_MURDER_FLAG = as.logical(STATISTICAL_MURDER_FLAG), PERP_AGE_GROUP = as.factor(PERP_AGE_GROUP), PERP_SEX = as.factor(PERP_SEX), PERP_RACE= as.factor(PERP_RACE), VIC_AGE_GROUP = as.factor(VIC_AGE_GROUP), VIC_SEX = as.factor(VIC_SEX), VIC_RACE = as.factor(VIC_RACE)) %>% select(-c(X_COORD_CD,Y_COORD_CD,Lon_Lat))
+
+NYPD_sh_t
+summary(NYPD_sh_t)
+```
+
+*Visualization
+
+Taking a look to the Precincts with the most and less cases
+
+4 of the 5 with higher cases are in Brooklyn(75,73,67,79) and one is in the Bronx (44)
+
+For less cases we divide them between Manhattan (19,17,22) and Queens( 112,111)
+
+Now we know why everyone wants to live in Manhattan. (Just kidding)
+
+
+These are the 5 Precincts with the most historical cases in NYC
+``` {r precincts_with_more_cases, message = TRUE}
+precinct_head<-NYPD_sh_t %>%
+  group_by(PRECINCT) %>% 
+  tally()
+ precinct_head<-precinct_head %>% 
+   arrange(desc(n)) %>% 
+   head(n=5)
+ precinct_head
+```
+
+These are the 5 Precincts with less historical cases in NYC
+``` {r precincts_with_less_cases, message = TRUE} 
+ precinct_tail<-NYPD_sh_t %>% 
+  group_by(PRECINCT) %>% 
+  tally()
+ precinct_tail<-precinct_tail %>% 
+   arrange(desc(n)) %>% 
+   tail(n=5)
+ precinct_tail
+```
+
+Having Precincts with the most cases does not necessarily mean they are indeed where there have been the most cases in general.
+
+
+By creating this Bar plot of NYC shootings it is clearer how the cases are distributed. 
+
+Looking at you Brooklyn, our first place.
+
+But we should be careful, more cases does not mean it is more dangerous. The size of the Borough and population, between other data that we could add to make a deeper analysis could be part to get rid of any possible bias. 
+
+But what we do know is that Brooklyn is the Borough with the highest number of shootings since 2006.
+``` {r bar_plot_historyofshootings, message = TRUE}
+barplot_NYC<-NYPD_sh_t %>% 
+  ggplot(aes(x=BORO))+geom_bar()+xlab("")+ ylab("COUNT")+ggtitle("NYC SHOOTING SPREAD FROM 2016")
+barplot_NYC
+```
+
+Additionally We will visualize a map of Brooklyn to have an idea of which part of it has the most density
+
+Basically, in the upper right quadrant of our point graph is where it is concentrated the majority of the cases registered so far.
+``` {r map_shootings_brooklyn, message = TRUE}
+brooklyn_map<-NYPD_shooting_data %>% 
+  filter(BORO=="BROOKLYN") %>% 
+  ggplot(aes(x=Longitude, y=Latitude))+geom_point()+xlab("LONG")+ ylab("LAT")+ggtitle("MAP OF BROOKLYN SHOOTINGS FROM 2016")
+brooklyn_map
+```
+
+I'm left with some questions. 
+
+I would like to know, historically, in which months of the year NYC has had the most cases. We made this one!
+
+Note that these could be influenced by tourism, weather, population, elections, etc. But we are not looking at those factors right now.
+
+
+``` {r years_cases, include = FALSE} 
+
+NYPD_sh_t$Yr <- year(NYPD_sh_t$OCCUR_DATE)
+Yrscases <- NYPD_sh_t %>%
+group_by(Yr) %>%
+summarize(shootings = n(), murders_gun = sum(STATISTICAL_MURDER_FLAG))
+Yrscases$deadly_per = Yrscases$murders_gun/Yrscases$shootings
+
+years_w_mostcases = ggplot(Yrscases, aes(x=Yr,y = deadly_per)) + geom_point(color = 'red' ) + geom_line(color = 'red' ) + labs(x = "Year",y = "% of Shootings") + scale_y_continuous(breaks = seq(0.15,0.25,0.01)) +
+     scale_x_continuous(breaks = seq(2006,2022,2))
+years_w_mostcases
+```
+
+But we can clearly see a yearly trend, the spikes are near July, however something to worry about would be the this mountain that happened when the pandemic started andd went went way higher than the average years.
+
+``` {r monthly_murders, message = FALSE} 
+
+NYPD_sh_t$Yr <- year(NYPD_sh_t$OCCUR_DATE)
+
+nymonths <- NYPD_sh_t %>%
+     filter(Yr > 2012) %>%
+     mutate("Month"= month(OCCUR_DATE), "Year" = as.factor(Yr)) %>%
+     group_by(Year,Month) %>%
+     summarize(shootings = n(), murders_gun = sum(STATISTICAL_MURDER_FLAG))
+
+
+
+nymonthsgraph <- ggplot(nymonths) + geom_point(aes(x=Month, y=shootings, colour=Year)) + geom_line(aes(x=Month, y=shootings, colour=Year)) + scale_x_continuous(breaks = seq(1,12), labels =c('JAN',"FEB", "MAR","APR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC")) + labs(x = "Month",y = "# of Shootings", title = "Number of Shootings in NYC per Month")
+nymonthsgraph
+
+```
+*Model
+
+We should end this with our model, that will answer our two main questions.
+
+Where have occurred the most cases in NYC? Have they been increasing along the time?
+
+We took Population as a new variable from the website of newyorkcity database to be able to answer that.
+
+And what do we see in this last plot? even though Brooklyn had the highest number of shootings in our analysis Bronx is the top at shootings per 10,000 people.
+
+``` {r nyfinalmodel, message = FALSE} 
+
+pop <- read_csv("https://data.cityofnewyork.us/api/views/xywu-7bv9/rows.csv")
+
+population <- pop %>%
+     select(Borough,`2020`) %>%
+     rename('population'='2020', 'BORO'='Borough') %>%
+     filter(BORO!= "NYC Total")%>%
+     mutate(BORO = toupper(BORO))
+
+nydbmodel <- NYPD_sh_t %>%
+     filter(Yr > 2018) %>%
+ mutate("Year" = as.factor(Yr)) %>%
+     group_by(Year, BORO) %>%
+     summarize(shootings = n()) %>%
+     pivot_wider(names_from = Year, values_from = shootings,names_prefix = 'Y')
+
+nydbmodel <-left_join(nydbmodel,population,by = 'BORO')
+
+nyfinalmodel<- nydbmodel %>%
+     mutate('S_2019_per_10000'=10000*Y2019/population,'S_2020_per_10000'=10000*Y2020/population ) %>%
+     rowwise()%>%
+     mutate(mymean = mean(c(S_2019_per_10000,S_2020_per_10000))) %>%
+     arrange(mymean) %>%
+     mutate(Borough = factor(BORO, BORO), Increase =S_2020_per_10000/S_2019_per_10000 )
+
+
+ggplot(nyfinalmodel)+ geom_segment(aes(x = Borough, xend = Borough, y =S_2019_per_10000, yend=S_2020_per_10000), color = 'grey' )+ geom_point(aes(x = Borough, y =S_2019_per_10000, color = factor(2019)))+ geom_point(aes(x = Borough, y =S_2020_per_10000, color = factor(2020)))+ ylim(0,4)+ scale_y_continuous(breaks= seq(0,4,0.5), limits=c(0,4))+ labs(x= "",y="Shootings per 10,000 habitants",title="Increase in shootings per 10,000. 2019- 2020",colour = "Year")+ scale_fill_manual("Year",values=c("2019","2020"))
+```
+At the start of the project I would've thought that the most incidents could have been in Manhattan based on being one of the zones with most tourists in the world all of the year. 
+
+And I am glad I was wrong, because trying to look at it from the start or trying to explain why these kind of tendencies are happening, based on the little information I know about the US, could have been a bias to worry about.
+
