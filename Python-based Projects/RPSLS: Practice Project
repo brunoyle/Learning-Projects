@@ -1,0 +1,132 @@
+"""
+Implementing rock,paper,scissors,lizard,Spock for Practice Project
+"""
+import random
+
+def name_to_number(name):
+    """
+    Given string name, return integer 0, 1, 2, 3, or 4 
+    corresponding to numbering in the instructions
+    """
+    
+    # convert name to number using if/elif/else
+    if name == "rock":
+        return 0
+    elif name == "Spock":
+        return 1
+    elif name == "paper":
+        return 2
+    elif name == "lizard":
+        return 3
+    elif name == "scissors":
+        return 4
+    else :
+        return "Error. Name does not match a correct input string"
+
+#Test calls of name to number    
+#print(name_to_number("rock"))		# output - 0
+#print(name_to_number("Spock"))		# output - 1
+#print(name_to_number("paper"))		# output - 2
+#print(name_to_number("lizard"))		# output - 3
+#print(name_to_number("scissors"))	# output - 4
+
+def number_to_name(number) :
+    """
+    Converts a number in the range 0 to 4 
+    into its corresponding name as a string
+    """
+    if number == 0:
+        return "rock"
+    elif number == 1:
+        return "Spock"
+    elif number == 2:
+        return "paper"
+    elif number == 3:
+        return "lizard"
+    elif number == 4:
+        return "scissors"
+    else:
+        return "Error. Number does not match a correct input string"
+    
+# Test calls to number_to_name()
+#print(number_to_name(0))
+#print(number_to_name(1))
+#print(number_to_name(2))
+#print(number_to_name(3))
+#print(number_to_name(4))
+
+
+
+###################################################
+# Output to the console should have the form:
+# rock
+# Spock
+# paper
+# lizard
+# scissors
+
+def rpsls(player_choice):
+    """
+    Given string player_choice, play a game of RPSLS 
+    and print results to console
+    """
+    
+    #Prints a blank line to separate consecutive games
+    print() 
+    
+    #Print a message with the player's choice
+    print("Player choice was", player_choice) 
+    
+    #Convert the player's choice to player_number using the function name_to_number()
+    player_number = name_to_number(player_choice) 
+    
+    #Generate the computer's guess giving a random number from 0 to 5
+    comp_number = random.randrange(5) 
+    
+    #Convert comp_number to comp_choice using the function number_to_name()
+    comp_choice = number_to_name(comp_number)
+    
+    #Print the message with the computer's choice
+    print("Computer choice was",comp_choice) 
+    
+    #Compute the difference between computer's and player's choice taking modulo 5
+    difference = (comp_number - player_number) %5
+    
+    
+   #Test all the posible values and prints a message concerning the winner of the game
+    if difference == 0:
+        print("It's a tie")
+    elif (difference == 1 ) or (difference == 2):
+        print ("Computer wins!")
+    else :
+        print ("Player wins!")
+        
+rpsls("rock")
+rpsls("Spock")
+rpsls("paper")
+rpsls("lizard")
+rpsls("scissors")
+    
+
+    
+#First 5 random results of the game played to proof it's random    
+
+#Player choice was rock
+#Computer choice was scissors
+#Player wins!
+
+#Player choice was Spock
+#Computer choice was Spock
+#It's a tie
+
+#Player choice was paper
+#Computer choice was scissors
+#Computer wins!
+
+#Player choice was lizard
+#Computer choice was Spock
+#Player wins!
+
+#Player choice was scissors
+#Computer choice was rock
+#Computer wins!
